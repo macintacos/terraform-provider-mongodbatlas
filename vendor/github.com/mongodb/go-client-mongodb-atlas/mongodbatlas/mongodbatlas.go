@@ -49,7 +49,6 @@ type Client struct {
 	Teams                            TeamsService
 	AtlasUsers                       AtlasUsersService
 	GlobalClusters                   GlobalClustersService
-	Teams                            TeamsService
 
 	onRequestCompleted RequestCompletionCallback
 }
@@ -155,10 +154,9 @@ func NewClient(httpClient *http.Client) *Client {
 	c.WhitelistAPIKeys = &WhitelistAPIKeysServiceOp{client: c}
 	c.PrivateIPMode = &PrivateIpModeServiceOp{client: c}
 	c.MaintenanceWindows = &MaintenanceWindowsServiceOp{client: c}
-	c.Teams = &TeamsServiceOp{client: c}
-	c.AtlasUsers = &AtlasUsersServiceOp{client: c}
 	c.GlobalClusters = &GlobalClustersServiceOp{client: c}
 	c.Teams = &TeamsServiceOp{client: c}
+	c.AtlasUsers = &AtlasUsersServiceOp{client: c}
 
 	return c
 }
