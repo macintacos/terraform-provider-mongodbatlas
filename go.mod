@@ -12,4 +12,4 @@ require (
 	github.com/spf13/cast v1.3.0
 )
 
-replace github.com/mongodb/go-client-mongodb-atlas v0.1.1 => ../go-client-mongodb-atlas
+replace github.com/mongodb/go-client-mongodb-atlas v0.1.2 => ../go-client-mongodb-atlas
