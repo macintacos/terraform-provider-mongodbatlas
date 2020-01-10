@@ -54,7 +54,6 @@ func TestAccResourceMongoDBAtlasCluster_basicAWS(t *testing.T) {
 			},
 		},
 	})
-
 }
 
 func TestAccResourceMongoDBAtlasCluster_basicAdvancedConf(t *testing.T) {
@@ -284,7 +283,84 @@ func TestAccResourceMongoDBAtlasCluster_Global(t *testing.T) {
 			},
 		},
 	})
+}
 
+func TestAccResourceMongoDBAtlasCluster_AWSWithLabels(t *testing.T) {
+	var cluster matlas.Cluster
+
+	resourceName := "mongodbatlas_cluster.test"
+	projectID := os.Getenv("MONGODB_ATLAS_PROJECT_ID")
+	name := fmt.Sprintf("testAcc-%s-%s-%s", "AWS", "M10", acctest.RandString(1))
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckMongoDBAtlasClusterDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccMongoDBAtlasClusterAWSConfigdWithLabels(projectID, name, "false", "M10", "EU_CENTRAL_1", []matlas.Label{}),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMongoDBAtlasClusterExists(resourceName, &cluster),
+					testAccCheckMongoDBAtlasClusterAttributes(&cluster, name),
+					resource.TestCheckResourceAttrSet(resourceName, "project_id"),
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "disk_size_gb", "10"),
+					resource.TestCheckResourceAttrSet(resourceName, "mongo_uri"),
+					resource.TestCheckResourceAttr(resourceName, "labels.#", "0"),
+				),
+			},
+			{
+				Config: testAccMongoDBAtlasClusterAWSConfigdWithLabels(projectID, name, "false", "M10", "EU_CENTRAL_1",
+					[]matlas.Label{
+						{
+							Key:   "key 4",
+							Value: "value 4",
+						},
+						{
+							Key:   "key 3",
+							Value: "value 3",
+						},
+						{
+							Key:   "key 2",
+							Value: "value 2",
+						},
+					},
+				),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMongoDBAtlasClusterExists(resourceName, &cluster),
+					testAccCheckMongoDBAtlasClusterAttributes(&cluster, name),
+					resource.TestCheckResourceAttrSet(resourceName, "project_id"),
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "disk_size_gb", "10"),
+					resource.TestCheckResourceAttrSet(resourceName, "mongo_uri"),
+					resource.TestCheckResourceAttr(resourceName, "labels.#", "3"),
+				),
+			},
+			{
+				Config: testAccMongoDBAtlasClusterAWSConfigdWithLabels(projectID, name, "false", "M10", "EU_CENTRAL_1",
+					[]matlas.Label{
+						{
+							Key:   "key 1",
+							Value: "value 1",
+						},
+						{
+							Key:   "key 5",
+							Value: "value 5",
+						},
+					},
+				),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMongoDBAtlasClusterExists(resourceName, &cluster),
+					testAccCheckMongoDBAtlasClusterAttributes(&cluster, name),
+					resource.TestCheckResourceAttrSet(resourceName, "project_id"),
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "disk_size_gb", "10"),
+					resource.TestCheckResourceAttrSet(resourceName, "mongo_uri"),
+					resource.TestCheckResourceAttr(resourceName, "labels.#", "2"),
+				),
+			},
+		},
+	})
 }
 
 func TestAccResourceMongoDBAtlasCluster_importBasic(t *testing.T) {
@@ -617,4 +693,40 @@ func testAccMongoDBAtlasClusterConfigTenantUpdated(projectID, name string) strin
 		auto_scaling_disk_gb_enabled = true
 	  }
 	`, projectID, name)
+}
+
+func testAccMongoDBAtlasClusterAWSConfigdWithLabels(projectID, name, backupEnabled, tier, region string, labels []matlas.Label) string {
+	var labelsConf string
+	for _, label := range labels {
+		labelsConf += fmt.Sprintf(`
+			labels {
+				key   = "%s"
+				value = "%s"
+			}
+		`, label.Key, label.Value)
+	}
+
+	return fmt.Sprintf(`
+		resource "mongodbatlas_cluster" "test" {
+			project_id   = "%s"
+			name         = "%s"
+			num_shards   = 1
+			disk_size_gb = 10
+
+			replication_factor           = 3
+			backup_enabled               = %s
+			auto_scaling_disk_gb_enabled = false
+			mongo_db_major_version       = "4.0"
+		
+			//Provider Settings "block"
+			provider_name               = "AWS"
+			provider_disk_iops          = 100
+			provider_encrypt_ebs_volume = false
+			provider_instance_size_name = "%s"
+			provider_region_name        = "%s"
+
+			%s
+
+		}
+	`, projectID, name, backupEnabled, tier, region, labelsConf)
 }
